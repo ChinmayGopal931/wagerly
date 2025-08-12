@@ -1,0 +1,26 @@
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# Build artifacts
+out/
+cache/
+broadcast/
+
+# Node modules (if any)
+node_modules/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
