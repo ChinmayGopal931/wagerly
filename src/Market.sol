@@ -12,7 +12,7 @@ contract Market is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // --- Configuration ---
-    address public immutable USDC; // Address of the USDC ERC-20 token
+    address public immutable USDC; 
     address public immutable targetUser;
     uint32 public immutable perpId;
     uint256 public immutable endTime;
@@ -68,7 +68,10 @@ contract Market is ReentrancyGuard {
         uint256 _endTime,
         address _usdcTokenAddress,
         address _positionReader,
-        address _markPxReader
+        address _markPxReader,
+        address _yesToken,
+        address _noToken,
+        address _amm
     ) {
         targetUser = _targetUser;
         perpId = _perpId;
@@ -76,8 +79,17 @@ contract Market is ReentrancyGuard {
         USDC = _usdcTokenAddress;
         positionReader = _positionReader;
         markPxReader = _markPxReader;
+        
+        yesToken = _yesToken;
+        noToken = _noToken;
+        amm = _amm;
+
         outcome = Outcome.Undecided;
+        
+        // Capture initial position fingerprint immediately on creation
+        _commitPosition();
     }
+
 
     function initialize(address _yesToken, address _noToken, address _amm) external {
         require(yesToken == address(0), "Already initialized");
@@ -279,45 +291,5 @@ contract Market is ReentrancyGuard {
 
     function abs(int256 x) private pure returns (uint256) {
         return x >= 0 ? uint256(x) : uint256(-x);
-    }
-
-    // TEMPORARY DEBUG FUNCTIONS - Remove in production
-    function debugPosition() external view returns (int64 szi, uint64 entryNtl, uint32 leverage, bool isIsolated) {
-        (bool success, bytes memory data) = positionReader.staticcall(
-            abi.encode(targetUser, uint16(perpId))
-        );
-        require(success, "Position call failed");
-        
-        (szi, entryNtl,, leverage, isIsolated) = abi.decode(data, (int64, uint64, int64, uint32, bool));
-    }
-
-    function debugMarkPrice() external view returns (uint64) {
-        (bool success, bytes memory data) = markPxReader.staticcall(abi.encode(uint32(perpId)));
-        require(success, "Mark price call failed");
-        return abi.decode(data, (uint64));
-    }
-
-    function debugPnl() external view returns (
-        int64 szi, 
-        uint64 entryNtl, 
-        uint64 currentMarkPrice, 
-        uint64 entryPrice, 
-        int256 pnl, 
-        bool isClosed
-    ) {
-        L1Read reader = L1Read(positionReader);
-        L1Read.Position memory pos = reader.position(targetUser, uint16(perpId));
-
-        szi = pos.szi;
-        entryNtl = pos.entryNtl;
-        
-        if (pos.szi == 0) {
-            return (szi, entryNtl, 0, 0, 0, true);
-        }
-
-        currentMarkPrice = L1Read(markPxReader).markPx(perpId);
-        entryPrice = pos.entryNtl / uint64(abs(pos.szi));
-        pnl = (int256(uint256(currentMarkPrice)) - int256(uint256(entryPrice))) * pos.szi;
-        isClosed = false;
     }
 }

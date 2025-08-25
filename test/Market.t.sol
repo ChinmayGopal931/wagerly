@@ -29,9 +29,18 @@ contract MarketTest is Test {
         l1Read = new L1Read();
         usdc = new MockERC20("Mock USDC", "USDC", 6, 1_000_000e6); // Add initial supply
 
-        // 3. Deploy the Market contract
+        // 3. Set up initial position before Market deployment (required by constructor)
+        int64 initialSize = 100;
+        uint64 initialEntryNtl = 500_000e8; // 100 * 5000 * 1e8
+        _setMockPosition(targetUser, uint16(perpId), initialSize, initialEntryNtl);
+        _setMockMarkPrice(5_000e8);
+
+        // 4. Deploy the Market contract
         uint256 endTime = block.timestamp + 1 days;
-        market = new Market(targetUser, perpId, endTime, address(usdc), POSITION_PRECOMPILE_ADDRESS, MARK_PX_PRECOMPILE_ADDRESS);
+        address yesToken = address(0x1);
+        address noToken = address(0x2);
+        address amm = address(0x3);
+        market = new Market(targetUser, perpId, endTime, address(usdc), POSITION_PRECOMPILE_ADDRESS, MARK_PX_PRECOMPILE_ADDRESS, yesToken, noToken, amm);
     }
 
     // --- Helper Functions to control mock state ---
@@ -59,8 +68,7 @@ contract MarketTest is Test {
         _setMockPosition(targetUser, uint16(perpId), positionSize, entryNtl);
         _setMockMarkPrice(6_000e8);
         
-        // Initialize the market with the position
-        market.initialize(address(0x1), address(0x2), address(0x3));
+        // Market is already initialized via constructor
         
         // Now close the position (set szi to 0)
         _setMockPosition(targetUser, uint16(perpId), 0, 0);
@@ -86,8 +94,7 @@ contract MarketTest is Test {
         uint64 markPrice = 6_000e8; // Mark price scaled by 8 decimals.
         _setMockMarkPrice(markPrice);
 
-        // Initialize the market with the position
-        market.initialize(address(0x1), address(0x2), address(0x3));
+        // Market is already initialized via constructor
 
         // Act
         int256 pnl = market.snapshotPnl();
@@ -100,40 +107,27 @@ contract MarketTest is Test {
     }
 
     function test_snapshotPnl_WithRealUserData() public {
-        // This test uses the real-world position data you provided for user 0x15b3...
-        // to validate the PnL calculation logic.
+        // This test uses the initial position from setUp() and updates the mark price
+        // to test PnL calculation with the committed position.
 
-        // Data from API for the BTC position:
-        // szi: "135.0"
-        // entryPx: "110014.4"
-        // positionValue: "16059060.0" -> markPx = 118956.0
-        // unrealizedPnl: "1207110.635859"
-
-        // We derive the contract inputs from this data, assuming 8 decimals for prices
-        // and that `szi` in the contract represents the base amount without decimals.
-        int64 real_szi = 135;
-        uint64 real_markPrice = 11895600000000; // 118956.0 * 1e8
-        uint64 real_entryNtl = 1485194400000000; // 110014.4 * 135 * 1e8
-
-        // Arrange: Set up the mocks with the real data.
-        _setMockPosition(targetUser, uint16(perpId), real_szi, real_entryNtl);
-        _setMockMarkPrice(real_markPrice);
-
-        // Initialize the market with the position
-        market.initialize(address(0x1), address(0x2), address(0x3));
+        // Use the committed position from setUp(): size=100, entryNtl=500_000e8
+        int64 committedSzi = 100;
+        uint64 committedEntryNtl = 500_000e8;
+        
+        // Set a new mark price to generate PnL
+        uint64 newMarkPrice = 6_000e8; // Price increase from 5000 to 6000
+        _setMockMarkPrice(newMarkPrice);
 
         // Act
         int256 pnl = market.snapshotPnl();
 
-        // Assert: The calculated PNL should match our expected calculation.
-        // This confirms the contract logic is sound.
-        uint64 entryPrice = real_entryNtl / uint64(uint256(abs(real_szi)));
-        int256 expectedPnl = (int256(uint256(real_markPrice)) - int256(uint256(entryPrice))) * real_szi;
+        // Assert: Calculate expected PnL
+        uint64 entryPrice = committedEntryNtl / uint64(uint256(abs(committedSzi)));
+        int256 expectedPnl = (int256(uint256(newMarkPrice)) - int256(uint256(entryPrice))) * committedSzi;
         assertEq(pnl, expectedPnl);
 
-        // We can also log the PnL to visually compare with the API's value.
-        // The result will have 8 decimals.
-        console.log("PnL from contract (scaled by 1e8):", pnl); // Should be ~120711600000000
+        console.log("PnL from contract (scaled by 1e8):", pnl);
+        console.log("Expected PnL:", expectedPnl);
     }
 
     function abs(int256 x) private pure returns (int256) {
