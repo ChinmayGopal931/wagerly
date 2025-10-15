@@ -1,5 +1,8 @@
 # Wagerly - A Prediction Market built entirely on HyperEVM 
 
+Wagerly is a prediction market that allows users to speculate on the PnL of a trader's perpetual futures position. By leveraging on-chain position data, our protocol creates a novel financial primitive where you can bet on a trader's performance, as well as an asset's price. This enables new use cases for hedging, speculation, and monetizing trading alpha in a fully transparent and trustless manner.
+Markets are trustless, and also incentivize market creaters by directing swap revenue to them as LPs.
+
 Finalist for the Hyperliquid Community Hackaton - https://x.com/hl_hackathon/status/1965085820798591198
 
 
