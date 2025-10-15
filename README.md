@@ -1,6 +1,8 @@
 # Wagerly - A Prediction Market built entirely on HyperEVM 
 
 Finalist for the Hyperliquid Community Hackaton - https://x.com/hl_hackathon/status/1965085820798591198
+
+
 Link to submission : https://taikai.network/hl-hackathon-organizers/hackathons/hl-hackathon/projects/cmeks4n6d02odw40igiffkw7g/idea
 
 
